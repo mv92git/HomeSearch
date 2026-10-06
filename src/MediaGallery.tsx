@@ -178,6 +178,9 @@ export default function MediaGallery({ home }: { home: Home }) {
     const deposit = home.deposit ? (Number.isFinite(Number(home.deposit)) ? '₹' + Number(home.deposit).toLocaleString('en-IN') : home.deposit) : 'Not noted';
     const lines = [
       '*🏠 Home visit summary*',
+      '*Dealer:* ' + (home.dealerName || 'Not noted'),
+      '*Dealer phone:* ' + (home.dealerPhone || 'Not noted'),
+      '*Visit date:* ' + (home.date ? new Date(home.date + 'T00:00:00').toLocaleDateString('en-IN') : 'Not noted'),
       '*Property:* ' + (home.name || 'Not named'),
       '*Locality:* ' + (home.area || 'Not noted'),
       '*Configuration:* ' + (home.bhk ? home.bhk + ' BHK' : 'Not noted') + (home.size ? ' · ' + home.size : ''),
@@ -186,7 +189,6 @@ export default function MediaGallery({ home }: { home: Home }) {
       '*Maintenance:* ' + (home.maintenance || 'Not noted'),
       '*Brokerage / agent fee:* ' + (home.brokerage || 'Not noted'),
       '*Floor:* ' + floor + (home.totalFloors ? ' of ' + home.totalFloors : ''),
-      '*Visit date:* ' + (home.date ? new Date(home.date + 'T00:00:00').toLocaleDateString('en-IN') : 'Not noted'),
       '',
       '*Section scores*',
     ];
@@ -201,36 +203,39 @@ export default function MediaGallery({ home }: { home: Home }) {
   function shareSummary() {
     const whatsappUrl = 'https://wa.me/?text=' + encodeURIComponent(visitSummary());
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-    setMessage('WhatsApp opened with the visit summary. Send it, then return here to share the media.');
+    setMessage('WhatsApp opened with the visit summary.');
   }
 
-  async function shareMedia() {
-    if (!media.length) return;
-    const files = media.map(item => {
-      const mimeType = item.mimeType || item.blob.type || (item.kind === 'photo' ? 'image/jpeg' : 'video/mp4');
-      const extension = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1]?.split(';')[0] || (item.kind === 'photo' ? 'jpg' : 'mp4');
-      const originalName = item.name || 'home-visit-' + item.kind + '-' + item.id;
-      const name = /\.[a-z0-9]{2,5}$/i.test(originalName) ? originalName : originalName + '.' + extension;
-      return new File([item.blob], name, { type: mimeType, lastModified: item.createdAt });
-    });
+  async function shareVisit() {
+    if (!media.length) { shareSummary(); return; }
+
+    const attachment = media.find(item => item.kind === 'video') || media[0];
+    const mimeType = attachment.mimeType || attachment.blob.type || (attachment.kind === 'photo' ? 'image/jpeg' : 'video/mp4');
+    const extension = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1]?.split(';')[0] || (attachment.kind === 'photo' ? 'jpg' : 'mp4');
+    const originalName = attachment.name || 'home-visit-' + attachment.kind + '-' + attachment.id;
+    const name = /\.[a-z0-9]{2,5}$/i.test(originalName) ? originalName : originalName + '.' + extension;
+    const file = new File([attachment.blob], name, { type: mimeType, lastModified: attachment.createdAt });
+    const summary = visitSummary();
     const shareNavigator = navigator as ShareCapableNavigator;
+    const payload: SharePayload = { files: [file], text: summary, title: 'Home visit summary' };
+
     if (!shareNavigator.share) {
-      setMessage('This browser cannot open a file share sheet. Use “Save to device” on each file to share it.');
+      shareSummary();
       return;
     }
-    if (shareNavigator.canShare && !shareNavigator.canShare({ files })) {
-      setMessage('This phone cannot share all these files together. Use “Save to device” on each file to share them individually.');
+    if (shareNavigator.canShare && !shareNavigator.canShare(payload)) {
+      shareSummary();
+      setMessage('WhatsApp opened with the summary. This browser could not attach the file; use “Save to device” to share it separately.');
       return;
     }
     try {
-      await shareNavigator.share({ files });
-      setMessage('Media share sheet opened with ' + files.length + ' file' + (files.length === 1 ? '' : 's') + '. Choose WhatsApp to send them without a caption.');
+      await shareNavigator.share(payload);
+      setMessage('Choose WhatsApp to share the summary with one attachment.');
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return;
-      setMessage('The phone could not share all these files together. They are still saved with this visit; try sharing fewer files or use “Save to device” individually.');
+      setMessage('Could not open the share sheet. Your visit and attachments are still saved; use “Save to device” to share a file.');
     }
   }
-
   async function removeMedia(item: VisitMedia) {
     if (!window.confirm('Remove this ' + item.kind + ' from this visit?')) return;
     try {
@@ -271,9 +276,9 @@ export default function MediaGallery({ home }: { home: Home }) {
         <button type="button" className="media-remove" onClick={() => void removeMedia(item)} aria-label={'Remove ' + item.name}><Icon name="trash" size={16}/></button>
       </div>
     </article>)}</div>}
-    <div className="media-whatsapp">      <button type="button" onClick={shareSummary}><Icon name="share" size={18}/>1. Share summary on WhatsApp</button>
-      <button type="button" onClick={() => void shareMedia()} disabled={!media.length}><Icon name="share" size={18}/>2. Share all {media.length} photos &amp; videos</button>
-      <small>Send the summary first, then return here to send the files without a caption.</small>
+    <div className="media-whatsapp">
+      <button type="button" onClick={() => void shareVisit()}><Icon name="share" size={18}/>Share visit on WhatsApp</button>
+      <small>Sends the summary with one attachment, video first. Use “Save to device” to share other files.</small>
     </div>
     <p className="media-storage-note">Stored in this browser on this device only. Use “Save to device” to share a copy or download it; browser downloads may not go straight to Gallery.</p>
     {message && <p className="media-message" role="status">{message}</p>}

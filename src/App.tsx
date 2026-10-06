@@ -61,11 +61,15 @@ export default function App() {
           <div className="crumb">HOME VISIT / CHECKLIST</div>
           <div className="title"><div><h1>Evaluate the home<span>.</span></h1><p>A calm walkthrough for your next house visit.</p></div><button className="quiet" onClick={remove}>Remove</button></div>
           <section className="property">
-            <b>PROPERTY DETAILS</b>
+            <div className="property-head">
+              <h2>Property details</h2>
+              <label className="date">Visit date <input type="date" value={home.date} onChange={event => update({ date: event.target.value })}/></label>
+            </div>
             <div className="field-group">
-              <h3>Property &amp; location</h3>
               <div className="fields">
-                <label>Property / society<input type="text" placeholder="e.g. Gulshan Vivante" value={home.name} onChange={event => update({ name: event.target.value })}/></label>
+                <label>Name<input type="text" placeholder="e.g. Gulshan Vivante" value={home.name} onChange={event => update({ name: event.target.value })}/></label>
+                <label>Dealer name<input type="text" placeholder="Dealer or agent" value={home.dealerName || ''} onChange={event => update({ dealerName: event.target.value })}/></label>
+                <label>Dealer phone<input type="tel" inputMode="tel" placeholder="Phone number" value={home.dealerPhone || ''} onChange={event => update({ dealerPhone: event.target.value })}/></label>
                 <label>Sector / locality<input type="text" placeholder="e.g. Sector 137, Noida" value={home.area} onChange={event => update({ area: event.target.value })}/></label>
                 <label>Configuration (BHK)<select value={home.bhk || ''} onChange={event => update({ bhk: event.target.value })}>
                   <option value="">Select BHK</option>{['2', '2.5', '3', '3.5'].map(value => <option key={value} value={value}>{value} BHK</option>)}
@@ -97,7 +101,6 @@ export default function App() {
                 </select></label>
               </div>
             </div>
-            <label className="date">Visit date <input type="date" value={home.date} onChange={event => update({ date: event.target.value })}/></label>
           </section>
           <div className="progress"><b>{done}/{total} checks</b><span>{pct}%</span><i><em style={{ width: pct + '%' }}/></i></div>
           <div className="walk-head"><h2>Check as you go</h2><small>Tap a row to mark it done</small></div>
