@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';type IconName = 'camera' | 'video' | 'image' | 'share' | 'trash' | 'download' | 'close';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Home, sections, total } from './checklist';
+
+type IconName = 'camera' | 'video' | 'image' | 'share' | 'trash' | 'download' | 'close';
 
 function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   const props = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true as const };
@@ -21,8 +24,7 @@ type VisitMedia = {
   mimeType: string;
   createdAt: number;
   blob: Blob;
-};
-type SharePayload = { files: File[]; title: string };
+};type SharePayload = { files?: File[]; title?: string; text?: string };
 type ShareCapableNavigator = Navigator & {
   canShare?: (data: SharePayload) => boolean;
   share?: (data: SharePayload) => Promise<void>;
@@ -87,10 +89,10 @@ async function deleteVisitMedia(id: string): Promise<void> {
     await transactionDone(transaction);
   } finally {
     db.close();
-  }
-}
+  }}
 
-export default function MediaGallery({ homeId }: { homeId: string }) {
+export default function MediaGallery({ home }: { home: Home }) {
+  const homeId = home.id;
   const [media, setMedia] = useState<VisitMedia[]>([]);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
@@ -170,6 +172,49 @@ export default function MediaGallery({ homeId }: { homeId: string }) {
     setMessage('Downloaded to your device. Your browser may put downloads outside Photos or Gallery.');
   }
 
+  async function shareVisit() {
+    const complete = Object.values(home.checks).filter(Boolean).length;
+    const floor = home.floor === '0' ? 'Ground floor' : home.floor ? 'Floor ' + home.floor : 'Not noted';
+    const rent = home.rent ? (Number.isFinite(Number(home.rent)) ? '₹' + Number(home.rent).toLocaleString('en-IN') : home.rent) : 'Not noted';
+    const deposit = home.deposit ? (Number.isFinite(Number(home.deposit)) ? '₹' + Number(home.deposit).toLocaleString('en-IN') : home.deposit) : 'Not noted';
+    const lines = [
+      '*🏠 Home visit summary*',
+      '*Property:* ' + (home.name || 'Not named'),
+      '*Locality:* ' + (home.area || 'Not noted'),
+      '*Configuration:* ' + (home.bhk ? home.bhk + ' BHK' : 'Not noted') + (home.size ? ' · ' + home.size : ''),
+      '*Monthly rent:* ' + rent,
+      '*Security deposit:* ' + deposit,
+      '*Maintenance:* ' + (home.maintenance || 'Not noted'),
+      '*Brokerage / agent fee:* ' + (home.brokerage || 'Not noted'),
+      '*Floor:* ' + floor + (home.totalFloors ? ' of ' + home.totalFloors : ''),
+      '*Visit date:* ' + (home.date ? new Date(home.date + 'T00:00:00').toLocaleDateString('en-IN') : 'Not noted'),
+      '',
+      '*Checklist: ' + complete + '/' + total + ' complete*',
+    ];
+    sections.forEach(section => {
+      const checked = section.items.filter(item => home.checks[item.id]);
+      lines.push('*' + section.title + ':* ' + checked.length + '/' + section.items.length);
+      checked.forEach(item => lines.push('✅ ' + item.label));
+    });
+    if (home.notes.trim()) lines.push('', '*Notes:* ' + home.notes.trim());
+    if (media.length) lines.push('', '*Attachments:* ' + media.length + ' photo/video file' + (media.length === 1 ? '' : 's'));
+    const text = lines.join('\n');
+    const files = media.map(item => new File([item.blob], item.name, { type: item.mimeType }));
+    const shareNavigator = navigator as ShareCapableNavigator;
+    if (files.length && shareNavigator.share && shareNavigator.canShare?.({ files })) {
+      try {
+        await shareNavigator.share({ title: 'Home visit - ' + (home.name || 'Home'), text, files });
+        setMessage('Choose WhatsApp in the share sheet to send this visit with its photos and videos.');
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+      }
+    }
+    const whatsappUrl = 'https://wa.me/?text=' + encodeURIComponent(text);
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    setMessage(files.length ? 'WhatsApp opened with the visit details. This browser cannot attach files here; use Save to device to attach the media in WhatsApp.' : 'WhatsApp opened with the formatted visit details.');
+  }
+
   async function removeMedia(item: VisitMedia) {
     if (!window.confirm('Remove this ' + item.kind + ' from this visit?')) return;
     try {
@@ -210,6 +255,10 @@ export default function MediaGallery({ homeId }: { homeId: string }) {
         <button type="button" className="media-remove" onClick={() => void removeMedia(item)} aria-label={'Remove ' + item.name}><Icon name="trash" size={16}/></button>
       </div>
     </article>)}</div>}
+    <div className="media-whatsapp">
+      <button type="button" onClick={() => void shareVisit()}><Icon name="share" size={18}/>Share visit on WhatsApp</button>
+      <small>Choose WhatsApp from the device share sheet to include photos and videos.</small>
+    </div>
     <p className="media-storage-note">Stored in this browser on this device only. Use “Save to device” to share a copy or download it; browser downloads may not go straight to Gallery.</p>
     {message && <p className="media-message" role="status">{message}</p>}
     {preview && <div className="media-lightbox" role="dialog" aria-modal="true" aria-label={'Preview ' + preview.name} onClick={event => { if (event.target === event.currentTarget) setPreviewId(''); }}>
