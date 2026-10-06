@@ -1,0 +1,111 @@
+/* Tablet and large-screen readability. Mobile remains the single-column layout in mobile.css. */
+@media (min-width: 621px) {
+  :root { font-size: 16px; }
+  .app { width: 100%; margin-inline: auto; }
+  header { height: 76px; padding-inline: clamp(24px, 3vw, 64px); }
+  header small { font-size: 14px; }
+  .brand { font-size: 22px; gap: 10px; }
+  .brand i { width: 38px; height: 38px; font-size: 25px; }
+
+  .shell {
+    width: 100%;
+    max-width: 2200px;
+    grid-template-columns: clamp(230px, 17vw, 320px) minmax(0, 1fr);
+    margin-inline: auto;
+  }
+  aside { padding: 30px 18px; }
+  .side-title { padding: 0 6px 16px; font-size: 12px; }
+  .side-title button, .welcome button { min-height: 46px; padding: 10px 14px; font-size: 14px; }
+  nav { gap: 8px; }
+  nav button { min-height: 58px; padding: 12px; border-radius: 9px; }
+  nav b { font-size: 15px; line-height: 1.35; }
+  nav small { margin: 5px 0 0 22px; font-size: 13px; }
+  .side-bottom { padding-top: 18px; }
+  .side-bottom button { min-height: 46px; padding: 10px 12px; font-size: 14px; }
+  .side-bottom small { font-size: 12px; line-height: 1.5; }
+
+  main { max-width: 1600px; padding: clamp(30px, 3vw, 62px) clamp(26px, 3.2vw, 68px) 48px; }
+  .crumb { font-size: 12px; letter-spacing: 1.2px; }
+  .title { margin: 12px 0 24px; }
+  .title h1 { font-size: clamp(32px, 2.4vw, 44px); line-height: 1.16; letter-spacing: -1px; }
+  .title p { font-size: 16px; line-height: 1.5; }
+  .quiet { min-height: 46px; padding: 10px 12px; font-size: 14px; }
+
+  .property, .notes, .card { border-radius: 13px; }
+  .property { padding: clamp(20px, 2vw, 32px); }
+  .property > b { font-size: 12px; letter-spacing: 1.1px; }
+  .fields { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 16px; padding: 20px 0; }
+  .fields label { gap: 8px; font-size: 14px; line-height: 1.4; }
+  .fields input, .date input { height: 48px; padding-inline: 12px; border-radius: 8px; font-size: 16px; }
+  .date { gap: 12px; padding-top: 14px; font-size: 14px; }
+  .date input { width: 180px; height: 42px; }
+
+  .progress { min-height: 60px; gap: 14px; margin-top: 14px; padding: 14px 16px; border-radius: 10px; font-size: 14px; }
+  .progress > i { width: 120px; height: 6px; }
+  .walk-head { margin: 30px 2px 14px; }
+  .walk-head h2 { font-size: 24px; }
+  .walk-head small { font-size: 14px; }
+  .checklist { gap: 12px; }
+  .section { border-radius: 10px; }
+  .section-head { min-height: 58px; height: auto; gap: 14px; padding: 13px 18px; font-size: 16px; }
+  .section-head small { padding: 5px 9px; font-size: 13px; }
+  .section-head b { width: 20px; font-size: 19px; }
+  .items { padding: 0 18px 14px 42px; }
+  .item { min-height: 58px; gap: 12px; padding: 12px 0; }
+  .item > i { width: 21px; height: 21px; border-radius: 6px; font-size: 13px; }
+  .item b { font-size: 15px; line-height: 1.4; }
+  .item small { font-size: 13px; line-height: 1.45; }
+  .rating { gap: 8px; padding-top: 12px; }
+  .rating > span { font-size: 13px; }
+  .rating button { width: 36px; height: 36px; border-radius: 8px; font-size: 14px; }
+
+  .notes { margin-top: 16px; padding: 20px; }
+  .notes > b { font-size: 17px; }
+  .notes p { font-size: 14px; line-height: 1.5; }
+  .notes textarea { min-height: 100px; padding: 12px; border-radius: 8px; font-size: 15px; line-height: 1.5; }
+  footer { gap: 16px; padding-top: 18px; font-size: 13px; }
+  footer button { min-height: 42px; padding: 8px; font-size: 13px; }
+
+  .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .card { padding: 20px; }
+  .card h3 { font-size: 18px; }
+  .card p { font-size: 14px; line-height: 1.5; }
+  .card dt { font-size: 10px; }
+  .card dd { font-size: 14px; }
+  .card blockquote { font-size: 13px; line-height: 1.5; }
+  .open { min-height: 44px; font-size: 14px; }
+  .welcome { padding-left: clamp(12px, 4vw, 80px); }
+  .welcome > small { font-size: 12px; }
+  .welcome h1 { font-size: clamp(42px, 4vw, 66px); line-height: 1.08; }
+  .welcome p { max-width: 42ch; font-size: 17px; line-height: 1.65; }
+}
+
+/* Portrait and compact tablets: preserve the sidebar while giving the form room. */
+@media (min-width: 621px) and (max-width: 960px) {
+  .shell { grid-template-columns: 220px minmax(0, 1fr); }
+  aside { padding-inline: 12px; }
+  main { padding: 28px 22px 40px; }
+  .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 12px; }
+  .title h1 { font-size: 32px; }
+  .cards { grid-template-columns: 1fr; }
+}
+
+/* Wide displays use available space without stretching text into long lines. */
+@media (min-width: 1440px) {
+  .shell { max-width: 2400px; grid-template-columns: 320px minmax(0, 1fr); }
+  main { max-width: 1760px; }
+  .fields { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (hover: hover) and (min-width: 621px) {
+  nav button, .side-bottom button, .section-head, .item, .card, .open, .quiet, footer button {
+    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+  }
+  .item:hover { background: #fbfcfa; }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 10px 28px #242a2010; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}
