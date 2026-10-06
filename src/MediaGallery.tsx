@@ -172,7 +172,7 @@ export default function MediaGallery({ home }: { home: Home }) {
     setMessage('Downloaded to your device. Your browser may put downloads outside Photos or Gallery.');
   }
 
-  async function shareVisit() {
+    function visitSummary() {
     const floor = home.floor === '0' ? 'Ground floor' : home.floor ? 'Floor ' + home.floor : 'Not noted';
     const rent = home.rent ? (Number.isFinite(Number(home.rent)) ? '₹' + Number(home.rent).toLocaleString('en-IN') : home.rent) : 'Not noted';
     const deposit = home.deposit ? (Number.isFinite(Number(home.deposit)) ? '₹' + Number(home.deposit).toLocaleString('en-IN') : home.deposit) : 'Not noted';
@@ -195,8 +195,17 @@ export default function MediaGallery({ home }: { home: Home }) {
       lines.push('• ' + section.title + ': ' + (score ? score + '/5' : 'Not rated'));
     });
     if (home.notes.trim()) lines.push('', '*Notes:* ' + home.notes.trim());
-    if (media.length) lines.push('', '*Attachments:* ' + media.length + ' photo/video file' + (media.length === 1 ? '' : 's'));
-    const text = lines.join('\n');
+    return lines.join('\n');
+  }
+
+  function shareSummary() {
+    const whatsappUrl = 'https://wa.me/?text=' + encodeURIComponent(visitSummary());
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    setMessage('WhatsApp opened with the visit summary. Send it, then return here to share the media.');
+  }
+
+  async function shareMedia() {
+    if (!media.length) return;
     const files = media.map(item => {
       const mimeType = item.mimeType || item.blob.type || (item.kind === 'photo' ? 'image/jpeg' : 'video/mp4');
       const extension = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1]?.split(';')[0] || (item.kind === 'photo' ? 'jpg' : 'mp4');
@@ -205,29 +214,21 @@ export default function MediaGallery({ home }: { home: Home }) {
       return new File([item.blob], name, { type: mimeType, lastModified: item.createdAt });
     });
     const shareNavigator = navigator as ShareCapableNavigator;
-    if (files.length) {
-        if (!shareNavigator.share) {
-        void navigator.clipboard?.writeText(text).catch(() => undefined);
-        setMessage('This browser cannot hand the media to another app. The summary was copied; use “Save to device” on each file to attach it manually. No text-only WhatsApp draft was opened.');
-        return;
-      }
-      try {
-        const sharing = shareNavigator.share({ files, text });
-        const copied = navigator.clipboard?.writeText(text).then(() => true).catch(() => false) ?? Promise.resolve(false);
-        const summaryCopied = await copied;
-        await sharing;
-        setMessage(summaryCopied
-          ? 'Review media and summary before sending.'
-          : 'Review media and summary before sending.');
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
-        setMessage('The phone could not pass the media to its share sheet. The files are still saved with this visit. Try again or use “Save to device”.');
-      }
+    if (!shareNavigator.share) {
+      setMessage('This browser cannot open a file share sheet. Use “Save to device” on each file to share it.');
       return;
     }
-    const whatsappUrl = 'https://wa.me/?text=' + encodeURIComponent(text);
-    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-    setMessage('WhatsApp opened with the formatted visit summary.');
+    if (shareNavigator.canShare && !shareNavigator.canShare({ files })) {
+      setMessage('This phone cannot share all these files together. Use “Save to device” on each file to share them individually.');
+      return;
+    }
+    try {
+      await shareNavigator.share({ files });
+      setMessage('Media share sheet opened with ' + files.length + ' file' + (files.length === 1 ? '' : 's') + '. Choose WhatsApp to send them without a caption.');
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      setMessage('The phone could not share all these files together. They are still saved with this visit; try sharing fewer files or use “Save to device” individually.');
+    }
   }
 
   async function removeMedia(item: VisitMedia) {
@@ -270,9 +271,9 @@ export default function MediaGallery({ home }: { home: Home }) {
         <button type="button" className="media-remove" onClick={() => void removeMedia(item)} aria-label={'Remove ' + item.name}><Icon name="trash" size={16}/></button>
       </div>
     </article>)}</div>}
-    <div className="media-whatsapp">
-      <button type="button" onClick={() => void shareVisit()}><Icon name="share" size={18}/>Share visit on WhatsApp</button>
-      <small>Media and summary share together.</small>
+    <div className="media-whatsapp">      <button type="button" onClick={shareSummary}><Icon name="share" size={18}/>1. Share summary on WhatsApp</button>
+      <button type="button" onClick={() => void shareMedia()} disabled={!media.length}><Icon name="share" size={18}/>2. Share all {media.length} photos &amp; videos</button>
+      <small>Send the summary first, then return here to send the files without a caption.</small>
     </div>
     <p className="media-storage-note">Stored in this browser on this device only. Use “Save to device” to share a copy or download it; browser downloads may not go straight to Gallery.</p>
     {message && <p className="media-message" role="status">{message}</p>}
