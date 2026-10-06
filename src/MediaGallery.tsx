@@ -196,13 +196,12 @@ export default function MediaGallery({ home }: { home: Home }) {
     });
     if (home.notes.trim()) lines.push('', '*Notes:* ' + home.notes.trim());
     if (media.length) lines.push('', '*Attachments:* ' + media.length + ' photo/video file' + (media.length === 1 ? '' : 's'));
-    const text = lines.join('
-');
+    const text = lines.join('\n');
     const files = media.map(item => {
       const mimeType = item.mimeType || item.blob.type || (item.kind === 'photo' ? 'image/jpeg' : 'video/mp4');
       const extension = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1]?.split(';')[0] || (item.kind === 'photo' ? 'jpg' : 'mp4');
       const originalName = item.name || 'home-visit-' + item.kind + '-' + item.id;
-      const name = /.[a-z0-9]{2,5}$/i.test(originalName) ? originalName : originalName + '.' + extension;
+      const name = /\.[a-z0-9]{2,5}$/i.test(originalName) ? originalName : originalName + '.' + extension;
       return new File([item.blob], name, { type: mimeType, lastModified: item.createdAt });
     });
     const shareNavigator = navigator as ShareCapableNavigator;
