@@ -96,6 +96,9 @@ export default function MediaGallery({ home }: { home: Home }) {
   const [media, setMedia] = useState<VisitMedia[]>([]);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [shareFallback, setShareFallback] = useState(false);
+  const shareInFlight = useRef(false);
   const [previewId, setPreviewId] = useState('');
   const photoInput = useRef<HTMLInputElement>(null);
   const videoInput = useRef<HTMLInputElement>(null);
@@ -109,6 +112,7 @@ export default function MediaGallery({ home }: { home: Home }) {
     let current = true;
     setMedia([]);
     setMessage('');
+    setShareFallback(false);
     listVisitMedia(homeId)
       .then(rows => { if (current) setMedia(rows); })
       .catch(() => { if (current) setMessage('Device media storage is unavailable in this browser.'); });
@@ -206,34 +210,67 @@ export default function MediaGallery({ home }: { home: Home }) {
     setMessage('WhatsApp opened with the visit summary.');
   }
 
-  async function shareVisit() {
+  function selectedAttachment() {
+    return media.find(item => item.kind === 'video') || media[0];
+  }
+
+  function downloadAttachment() {
+    const attachment = selectedAttachment();
+    if (!attachment) return;
+    const url = URL.createObjectURL(attachment.blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = attachment.name || ('home-visit.' + (attachment.kind === 'video' ? 'mp4' : 'jpg'));
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    setMessage('Download requested. Attach the file from Downloads in your WhatsApp chat.');
+  }
+
+  async function shareVisit(fileOnly = false) {
+    if (shareInFlight.current) return;
     if (!media.length) { shareSummary(); return; }
-
-    const attachment = media.find(item => item.kind === 'video') || media[0];
-    const mimeType = attachment.mimeType || attachment.blob.type || (attachment.kind === 'photo' ? 'image/jpeg' : 'video/mp4');
-    const extension = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1]?.split(';')[0] || (attachment.kind === 'photo' ? 'jpg' : 'mp4');
-    const originalName = attachment.name || 'home-visit-' + attachment.kind + '-' + attachment.id;
-    const name = /\.[a-z0-9]{2,5}$/i.test(originalName) ? originalName : originalName + '.' + extension;
-    const file = new File([attachment.blob], name, { type: mimeType, lastModified: attachment.createdAt });
-    const summary = visitSummary();
-    const shareNavigator = navigator as ShareCapableNavigator;
-    const payload: SharePayload = { files: [file], text: summary, title: 'Home visit summary' };
-
-    if (!shareNavigator.share) {
-      shareSummary();
-      return;
-    }
-    if (shareNavigator.canShare && !shareNavigator.canShare(payload)) {
-      shareSummary();
-      setMessage('WhatsApp opened with the summary. This browser could not attach the file; use “Save to device” to share it separately.');
-      return;
-    }
+    shareInFlight.current = true;
+    setSharing(true);
+    setMessage('');
     try {
+      const attachment = selectedAttachment();
+      const mimeType = (attachment.mimeType || attachment.blob.type || (attachment.kind === 'photo' ? 'image/jpeg' : 'video/mp4')).split(';')[0].trim().toLowerCase();
+      const extension = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1] || (attachment.kind === 'photo' ? 'jpg' : 'mp4');
+      const originalName = attachment.name || 'home-visit-' + attachment.kind + '-' + attachment.id;
+      const name = /\.[a-z0-9]{2,5}$/i.test(originalName) ? originalName : originalName + '.' + extension;
+      const file = new File([attachment.blob], name, { type: mimeType, lastModified: attachment.createdAt });
+      const shareNavigator = navigator as ShareCapableNavigator;
+      // Keep this call in the click handler: a second share needs a fresh user tap.
+      const payload: SharePayload = fileOnly ? { files: [file] } : { files: [file], text: visitSummary() };
+      if (!shareNavigator.share || (shareNavigator.canShare && !shareNavigator.canShare({ files: [file] }))) {
+        setShareFallback(true);
+        setMessage('This browser cannot share this attachment. Send the summary below, then download and attach the file in WhatsApp.');
+        return;
+      }
       await shareNavigator.share(payload);
-      setMessage('Choose WhatsApp to share the summary with one attachment.');
+      if (fileOnly) {
+        setShareFallback(true);
+        setMessage('Attachment sharing completed. You can send the summary separately below.');
+      } else {
+        setShareFallback(false);
+        setMessage('Share request completed. Check WhatsApp to confirm the summary and attachment.');
+      }
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return;
-      setMessage('Could not open the share sheet. Your visit and attachments are still saved; use “Save to device” to share a file.');
+      setShareFallback(true);
+      const errorName = error && typeof error === 'object' && 'name' in error ? String(error.name) : 'UnknownError';
+      if (errorName === 'AbortError') {
+        setMessage('Sharing was cancelled or no sharing app was available. Nothing was removed; you can retry or use the options below.');
+      } else {
+        console.warn('Visit share failed:', errorName);
+        setMessage(fileOnly
+          ? 'The attachment could not be shared. Send the summary below, then download and attach the file in WhatsApp.'
+          : 'The summary and attachment could not be shared together. Try the attachment alone, or send the summary and download the file below.');
+      }
+    } finally {
+      shareInFlight.current = false;
+      setSharing(false);
     }
   }
   async function removeMedia(item: VisitMedia) {
@@ -277,9 +314,17 @@ export default function MediaGallery({ home }: { home: Home }) {
       </div>
     </article>)}</div>}
     <div className="media-whatsapp">
-      <button type="button" onClick={() => void shareVisit()}><Icon name="share" size={18}/>Share visit on WhatsApp</button>
-      <small>Sends the summary with one attachment, video first. Use “Save to device” to share other files.</small>
+      <button type="button" onClick={() => void shareVisit()} disabled={sharing || busy}><Icon name="share" size={18}/>Share visit on WhatsApp</button>
+      <small>Shares the summary with one attachment when supported, video first. Use “Save to device” to share other files.</small>
     </div>
+    {shareFallback && <div className="media-whatsapp" role="group" aria-label="Alternative sharing options">
+      <button type="button" onClick={shareSummary} disabled={sharing}>Send summary only on WhatsApp</button>
+      {media.length > 0 && <>
+        <button type="button" onClick={() => void shareVisit(true)} disabled={sharing || busy}>Try attachment only</button>
+        <button type="button" onClick={downloadAttachment} disabled={sharing}>Download attachment</button>
+      </>}
+      <small>Send the summary and file to the same WhatsApp chat. Your saved visit stays in this browser.</small>
+    </div>}
     <p className="media-storage-note">Stored in this browser on this device only. Use “Save to device” to share a copy or download it; browser downloads may not go straight to Gallery.</p>
     {message && <p className="media-message" role="status">{message}</p>}
     {preview && <div className="media-lightbox" role="dialog" aria-modal="true" aria-label={'Preview ' + preview.name} onClick={event => { if (event.target === event.currentTarget) setPreviewId(''); }}>
