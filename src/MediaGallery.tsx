@@ -206,19 +206,22 @@ export default function MediaGallery({ home }: { home: Home }) {
     });
     const shareNavigator = navigator as ShareCapableNavigator;
     if (files.length) {
-      const payload: SharePayload = { title: 'Home visit - ' + (home.name || 'Home'), text, files };
       if (!shareNavigator.share || (shareNavigator.canShare && !shareNavigator.canShare({ files }))) {
-        const whatsappUrl = 'https://wa.me/?text=' + encodeURIComponent(text);
-        window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-        setMessage('This browser cannot attach files from HomeSearch. WhatsApp opened with the summary only; attach the saved media manually.');
+        void navigator.clipboard?.writeText(text).catch(() => undefined);
+        setMessage('This browser cannot hand the media to another app. The summary was copied; use “Save to device” on each file to attach it manually. No text-only WhatsApp draft was opened.');
         return;
       }
       try {
-        await shareNavigator.share(payload);
-        setMessage('Share sheet opened with ' + files.length + ' media file' + (files.length === 1 ? '' : 's') + ' and the visit summary. Choose WhatsApp, then check the attachments before sending.');
+        const sharing = shareNavigator.share({ files });
+        const copied = navigator.clipboard?.writeText(text).then(() => true).catch(() => false) ?? Promise.resolve(false);
+        const summaryCopied = await copied;
+        await sharing;
+        setMessage(summaryCopied
+          ? 'Choose WhatsApp, select the chat, and paste the copied visit summary into the caption before sending.'
+          : 'Choose WhatsApp and select the chat. The media is attached; the summary could not be copied, so add it manually before sending.');
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return;
-        setMessage('The phone could not pass the media to its share sheet. The files are still saved with this visit. Try again or use Save to device.');
+        setMessage('The phone could not pass the media to its share sheet. The files are still saved with this visit. Try again or use “Save to device”.');
       }
       return;
     }
@@ -269,7 +272,7 @@ export default function MediaGallery({ home }: { home: Home }) {
     </article>)}</div>}
     <div className="media-whatsapp">
       <button type="button" onClick={() => void shareVisit()}><Icon name="share" size={18}/>Share visit on WhatsApp</button>
-      <small>Choose WhatsApp from the device share sheet to include photos and videos.</small>
+      <small>The media opens in the share sheet; the visit summary is copied for pasting as the WhatsApp caption.</small>
     </div>
     <p className="media-storage-note">Stored in this browser on this device only. Use “Save to device” to share a copy or download it; browser downloads may not go straight to Gallery.</p>
     {message && <p className="media-message" role="status">{message}</p>}
