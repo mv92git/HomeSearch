@@ -1,5 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, Download, ImagePlus, Share2, Trash2, Video, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';type IconName = 'camera' | 'video' | 'image' | 'share' | 'trash' | 'download' | 'close';
+
+function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
+  const props = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true as const };
+  switch (name) {
+    case 'camera': return <svg {...props}><path d="M14.5 4h-5L7.5 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg>;
+    case 'video': return <svg {...props}><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m22 8-6 4 6 4z"/></svg>;
+    case 'image': return <svg {...props}><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/><path d="M19 2v6M16 5h6"/></svg>;
+    case 'share': return <svg {...props}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.7 10.7 6.6-4.4m-6.6 7 6.6 4.1"/></svg>;
+    case 'trash': return <svg {...props}><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m4 4v6m6-6v6"/></svg>;
+    case 'download': return <svg {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>;
+    case 'close': return <svg {...props}><path d="m18 6-12 12M6 6l12 12"/></svg>;
+  }
+}
 
 type VisitMedia = {
   id: string;
@@ -180,9 +192,9 @@ export default function MediaGallery({ homeId }: { homeId: string }) {
       <span className="media-count">{media.length} {media.length === 1 ? 'file' : 'files'}</span>
     </div>
     <div className="media-actions">
-      <button type="button" onClick={() => photoInput.current?.click()} disabled={busy}><Camera size={18}/>Take a photo</button>
-      <button type="button" onClick={() => videoInput.current?.click()} disabled={busy}><Video size={18}/>Record a video</button>
-      <button type="button" className="media-secondary" onClick={() => libraryInput.current?.click()} disabled={busy}><ImagePlus size={18}/>Choose from device</button>
+      <button type="button" onClick={() => photoInput.current?.click()} disabled={busy}><Icon name="camera" size={18}/>Take a photo</button>
+      <button type="button" onClick={() => videoInput.current?.click()} disabled={busy}><Icon name="video" size={18}/>Record a video</button>
+      <button type="button" className="media-secondary" onClick={() => libraryInput.current?.click()} disabled={busy}><Icon name="image" size={18}/>Choose from device</button>
     </div>
     <input ref={photoInput} className="media-file-input" type="file" accept="image/*" capture="environment" aria-label="Take a photo" onChange={event => { void addFiles(event.currentTarget.files); event.currentTarget.value = ''; }}/>
     <input ref={videoInput} className="media-file-input" type="file" accept="video/*" capture="environment" aria-label="Record a video" onChange={event => { void addFiles(event.currentTarget.files); event.currentTarget.value = ''; }}/>
@@ -194,16 +206,16 @@ export default function MediaGallery({ homeId }: { homeId: string }) {
       </button>
       <div className="media-item-info"><span title={item.name}>{item.name}</span><small>{new Date(item.createdAt).toLocaleString()}</small></div>
       <div className="media-item-actions">
-        <button type="button" onClick={() => void saveToDevice(item)}><Share2 size={16}/>Save to device</button>
-        <button type="button" className="media-remove" onClick={() => void removeMedia(item)} aria-label={'Remove ' + item.name}><Trash2 size={16}/></button>
+        <button type="button" onClick={() => void saveToDevice(item)}><Icon name="share" size={16}/>Save to device</button>
+        <button type="button" className="media-remove" onClick={() => void removeMedia(item)} aria-label={'Remove ' + item.name}><Icon name="trash" size={16}/></button>
       </div>
     </article>)}</div>}
     <p className="media-storage-note">Stored in this browser on this device only. Use “Save to device” to share a copy or download it; browser downloads may not go straight to Gallery.</p>
     {message && <p className="media-message" role="status">{message}</p>}
     {preview && <div className="media-lightbox" role="dialog" aria-modal="true" aria-label={'Preview ' + preview.name} onClick={event => { if (event.target === event.currentTarget) setPreviewId(''); }}>
-      <div className="media-lightbox-content"><button type="button" className="media-close" onClick={() => setPreviewId('')} aria-label="Close preview"><X size={22}/></button>
+      <div className="media-lightbox-content"><button type="button" className="media-close" onClick={() => setPreviewId('')} aria-label="Close preview"><Icon name="close" size={22}/></button>
         {preview.kind === 'photo' ? <img src={urlFor(preview.id)} alt={preview.name}/> : <video src={urlFor(preview.id)} controls autoPlay/>}
-        <div><span>{preview.name}</span><button type="button" onClick={() => void saveToDevice(preview)}><Download size={17}/>Save to device</button></div>
+        <div><span>{preview.name}</span><button type="button" onClick={() => void saveToDevice(preview)}><Icon name="download" size={17}/>Save to device</button></div>
       </div>
     </div>}
   </section>;
