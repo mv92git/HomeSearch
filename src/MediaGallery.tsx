@@ -173,7 +173,6 @@ export default function MediaGallery({ home }: { home: Home }) {
   }
 
   async function shareVisit() {
-    const complete = Object.values(home.checks).filter(Boolean).length;
     const floor = home.floor === '0' ? 'Ground floor' : home.floor ? 'Floor ' + home.floor : 'Not noted';
     const rent = home.rent ? (Number.isFinite(Number(home.rent)) ? '₹' + Number(home.rent).toLocaleString('en-IN') : home.rent) : 'Not noted';
     const deposit = home.deposit ? (Number.isFinite(Number(home.deposit)) ? '₹' + Number(home.deposit).toLocaleString('en-IN') : home.deposit) : 'Not noted';
@@ -189,30 +188,44 @@ export default function MediaGallery({ home }: { home: Home }) {
       '*Floor:* ' + floor + (home.totalFloors ? ' of ' + home.totalFloors : ''),
       '*Visit date:* ' + (home.date ? new Date(home.date + 'T00:00:00').toLocaleDateString('en-IN') : 'Not noted'),
       '',
-      '*Checklist: ' + complete + '/' + total + ' complete*',
+      '*Section scores*',
     ];
     sections.forEach(section => {
-      const checked = section.items.filter(item => home.checks[item.id]);
-      lines.push('*' + section.title + ':* ' + checked.length + '/' + section.items.length);
-      checked.forEach(item => lines.push('✅ ' + item.label));
+      const score = home.ratings[section.id];
+      lines.push('• ' + section.title + ': ' + (score ? score + '/5' : 'Not rated'));
     });
     if (home.notes.trim()) lines.push('', '*Notes:* ' + home.notes.trim());
     if (media.length) lines.push('', '*Attachments:* ' + media.length + ' photo/video file' + (media.length === 1 ? '' : 's'));
-    const text = lines.join('\n');
-    const files = media.map(item => new File([item.blob], item.name, { type: item.mimeType }));
+    const text = lines.join('
+');
+    const files = media.map(item => {
+      const mimeType = item.mimeType || item.blob.type || (item.kind === 'photo' ? 'image/jpeg' : 'video/mp4');
+      const extension = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1]?.split(';')[0] || (item.kind === 'photo' ? 'jpg' : 'mp4');
+      const originalName = item.name || 'home-visit-' + item.kind + '-' + item.id;
+      const name = /.[a-z0-9]{2,5}$/i.test(originalName) ? originalName : originalName + '.' + extension;
+      return new File([item.blob], name, { type: mimeType, lastModified: item.createdAt });
+    });
     const shareNavigator = navigator as ShareCapableNavigator;
-    if (files.length && shareNavigator.share && shareNavigator.canShare?.({ files })) {
-      try {
-        await shareNavigator.share({ title: 'Home visit - ' + (home.name || 'Home'), text, files });
-        setMessage('Choose WhatsApp in the share sheet to send this visit with its photos and videos.');
+    if (files.length) {
+      const payload: SharePayload = { title: 'Home visit - ' + (home.name || 'Home'), text, files };
+      if (!shareNavigator.share || (shareNavigator.canShare && !shareNavigator.canShare({ files }))) {
+        const whatsappUrl = 'https://wa.me/?text=' + encodeURIComponent(text);
+        window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+        setMessage('This browser cannot attach files from HomeSearch. WhatsApp opened with the summary only; attach the saved media manually.');
         return;
+      }
+      try {
+        await shareNavigator.share(payload);
+        setMessage('Share sheet opened with ' + files.length + ' media file' + (files.length === 1 ? '' : 's') + ' and the visit summary. Choose WhatsApp, then check the attachments before sending.');
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return;
+        setMessage('The phone could not pass the media to its share sheet. The files are still saved with this visit. Try again or use Save to device.');
       }
+      return;
     }
     const whatsappUrl = 'https://wa.me/?text=' + encodeURIComponent(text);
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-    setMessage(files.length ? 'WhatsApp opened with the visit details. This browser cannot attach files here; use Save to device to attach the media in WhatsApp.' : 'WhatsApp opened with the formatted visit details.');
+    setMessage('WhatsApp opened with the formatted visit summary.');
   }
 
   async function removeMedia(item: VisitMedia) {
