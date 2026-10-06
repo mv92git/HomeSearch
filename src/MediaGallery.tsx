@@ -141,7 +141,7 @@ export default function MediaGallery({ home }: { home: Home }) {
         });
       }
       await refresh();
-      setMessage('Saved with this visit on this device.');
+      setMessage('Saved with this visit on this device.')
     } catch {
       setMessage('This file could not be saved. Your device browser may be out of storage.');
     } finally {
@@ -206,19 +206,19 @@ export default function MediaGallery({ home }: { home: Home }) {
     });
     const shareNavigator = navigator as ShareCapableNavigator;
     if (files.length) {
-      if (!shareNavigator.share || (shareNavigator.canShare && !shareNavigator.canShare({ files }))) {
+        if (!shareNavigator.share) {
         void navigator.clipboard?.writeText(text).catch(() => undefined);
         setMessage('This browser cannot hand the media to another app. The summary was copied; use “Save to device” on each file to attach it manually. No text-only WhatsApp draft was opened.');
         return;
       }
       try {
-        const sharing = shareNavigator.share({ files });
+        const sharing = shareNavigator.share({ files, text });
         const copied = navigator.clipboard?.writeText(text).then(() => true).catch(() => false) ?? Promise.resolve(false);
         const summaryCopied = await copied;
         await sharing;
         setMessage(summaryCopied
-          ? 'Choose WhatsApp, select the chat, and paste the copied visit summary into the caption before sending.'
-          : 'Choose WhatsApp and select the chat. The media is attached; the summary could not be copied, so add it manually before sending.');
+          ? 'Review media and summary before sending.'
+          : 'Review media and summary before sending.');
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return;
         setMessage('The phone could not pass the media to its share sheet. The files are still saved with this visit. Try again or use “Save to device”.');
@@ -272,7 +272,7 @@ export default function MediaGallery({ home }: { home: Home }) {
     </article>)}</div>}
     <div className="media-whatsapp">
       <button type="button" onClick={() => void shareVisit()}><Icon name="share" size={18}/>Share visit on WhatsApp</button>
-      <small>The media opens in the share sheet; the visit summary is copied for pasting as the WhatsApp caption.</small>
+      <small>Media and summary share together.</small>
     </div>
     <p className="media-storage-note">Stored in this browser on this device only. Use “Save to device” to share a copy or download it; browser downloads may not go straight to Gallery.</p>
     {message && <p className="media-message" role="status">{message}</p>}
